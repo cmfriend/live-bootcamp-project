@@ -1,8 +1,6 @@
 use axum::{
     Router,
     routing::post,
-    http::StatusCode,
-    response::IntoResponse,
     serve::Serve,  
 };
 
@@ -10,6 +8,9 @@ use tokio::net::TcpListener;
 use tower_http::services::{ServeDir, ServeFile};
 
 use std::error::Error;
+
+pub mod routes;
+use routes::*;
 
 // This struct encapsulates our application-related logic.
 pub struct Application {
@@ -43,24 +44,4 @@ impl Application {
         println!("listening on {}", &self.address);
         self.server.await
     }
-}
-
-async fn signup() -> impl IntoResponse {
-    StatusCode::OK.into_response()
-}
-
-async fn login() -> impl IntoResponse {
-    StatusCode::OK.into_response()
-}
-
-async fn logout() -> impl IntoResponse {
-    StatusCode::OK.into_response()
-}
-
-async fn verify_2fa() -> impl IntoResponse {
-    StatusCode::OK.into_response()
-}
-
-async fn verify_token() -> impl IntoResponse {
-    StatusCode::OK.into_response()
 }
