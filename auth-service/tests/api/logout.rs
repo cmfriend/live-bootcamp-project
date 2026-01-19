@@ -1,7 +1,7 @@
 use crate::helpers::TestApp;
 
 #[tokio::test]
-async fn logout_returns_success() {
+async fn logout_should_return_200() {
     let app = TestApp::new().await;
 
     let response = app.post_logout().await;
