@@ -1,14 +1,6 @@
 use std::collections::HashMap;
 
-use crate::domain::User;
-
-#[derive(Debug, PartialEq)]
-pub enum UserStoreError {
-    UserAlreadyExists,
-    UserNotFound,
-    InvalidCredentials,
-    UnexpectedError,
-}
+use crate::domain::{User, UserStore, UserStoreError};
 
 // TODO: Create a new struct called `HashmapUserStore` containing a `users` field
 // which stores a `HashMap`` of email `String`s mapped to `User` objects.
@@ -18,8 +10,9 @@ pub struct HashmapUserStore {
     users: HashMap<String, User>,
 }
 
-impl HashmapUserStore {
-    pub fn add_user(&mut self, user: User) -> Result<(), UserStoreError> {
+#[async_trait::async_trait]
+impl UserStore for HashmapUserStore {
+    async fn add_user(&mut self, user: User) -> Result<(), UserStoreError> {
         // Return `UserStoreError::UserAlreadyExists` if the user already exists,
         // otherwise insert the user into the hashmap and return `Ok(())`.
         use std::collections::hash_map::Entry;
@@ -38,7 +31,7 @@ impl HashmapUserStore {
     // This function should return a `Result` type containing either a
     // `User` object or a `UserStoreError`.
     // Return `UserStoreError::UserNotFound` if the user can not be found.
-    pub fn get_user(&self, email: &str) -> Result<User, UserStoreError> {
+    async fn get_user(&self, email: &str) -> Result<User, UserStoreError> {
         self
             .users
             .get(email)
@@ -52,7 +45,7 @@ impl HashmapUserStore {
     // unit type `()` if the email/password passed in match an existing user, or a `UserStoreError`.
     // Return `UserStoreError::UserNotFound` if the user can not be found.
     // Return `UserStoreError::InvalidCredentials` if the password is incorrect.
-    pub fn validate_user(&self, email: &str, password: &str) -> Result<(), UserStoreError> {
+    async fn validate_user(&self, email: &str, password: &str) -> Result<(), UserStoreError> {
         self
             .users
             .get(email)
@@ -79,9 +72,9 @@ mod tests {
         let bob = User::new("bob@example.com".to_string(), "bobspassword123".to_string(), true);
         let bob_clone = bob.clone();
 
-        assert!(user_store.add_user(bob).is_ok());
+        assert!(user_store.add_user(bob).await.is_ok());
 
-        assert_eq!(user_store.add_user(bob_clone).unwrap_err(), UserStoreError::UserAlreadyExists);
+        assert_eq!(user_store.add_user(bob_clone).await.unwrap_err(), UserStoreError::UserAlreadyExists);
     }
 
     #[tokio::test]
@@ -93,11 +86,11 @@ mod tests {
         let bob_requires_2fa = true;
         let bob = User::new(bob_email.to_string(), bob_password.to_string(), bob_requires_2fa);
 
-        assert_eq!(user_store.get_user(bob_email).unwrap_err(), UserStoreError::UserNotFound);
+        assert_eq!(user_store.get_user(bob_email).await.unwrap_err(), UserStoreError::UserNotFound);
 
-        let _ = user_store.add_user(bob.clone());
+        let _ = user_store.add_user(bob.clone()).await;
 
-        assert_eq!(user_store.get_user(bob_email).unwrap(), bob);
+        assert_eq!(user_store.get_user(bob_email).await.unwrap(), bob);
     }
 
     #[tokio::test]
@@ -109,12 +102,12 @@ mod tests {
         let bob_requires_2fa = true;
         let bob = User::new(bob_email.to_string(), bob_password.to_string(), bob_requires_2fa);
 
-        let _ = user_store.add_user(bob.clone());
+        let _ = user_store.add_user(bob.clone()).await;
 
-        assert!(user_store.validate_user(bob_email, bob_password).is_ok());
+        assert!(user_store.validate_user(bob_email, bob_password).await.is_ok());
 
-        assert_eq!(user_store.validate_user(bob_email, "notbobspassword321").unwrap_err(), UserStoreError::InvalidCredentials);
+        assert_eq!(user_store.validate_user(bob_email, "notbobspassword321").await.unwrap_err(), UserStoreError::InvalidCredentials);
 
-        assert_eq!(user_store.validate_user("somebodyelse@example.com", "somepassword").unwrap_err(), UserStoreError::UserNotFound);
+        assert_eq!(user_store.validate_user("somebodyelse@example.com", "somepassword").await.unwrap_err(), UserStoreError::UserNotFound);
     }
 }
