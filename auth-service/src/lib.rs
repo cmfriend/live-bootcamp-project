@@ -1,10 +1,9 @@
 use axum::{
-    http::StatusCode,
+    http::{Method, StatusCode},
     response::{IntoResponse, Response},
     routing::post,
     serve::Serve,
-    Json,
-    Router,
+    Json, Router,
 };
 
 pub mod domain;
@@ -13,7 +12,7 @@ use domain::AuthAPIError;
 use serde::{Deserialize, Serialize};
 
 use tokio::net::TcpListener;
-use tower_http::services::{ServeDir, ServeFile};
+use tower_http::{cors::CorsLayer, services::{ServeDir, ServeFile}};
 
 use std::error::Error;
 
@@ -40,6 +39,19 @@ impl Application {
         let assets_dir = ServeDir::new("assets")
             .not_found_service(ServeFile::new("assets/index.html"));
 
+        // Allow the app service(running on our local machine and in production) to call the auth service
+        let allowed_origins = [
+            "http://localhost:8000".parse()?,
+            "http://104.248.58.248:8000".parse()?,
+        ];
+
+        let cors = CorsLayer::new()
+            // Allow GET and POST requests
+            .allow_methods([Method::GET, Method::POST])
+            // Allow cookies to be included in requests
+            .allow_credentials(true)
+            .allow_origin(allowed_origins);
+
         let router = 
             Router::new()
                 .fallback_service(assets_dir)
@@ -48,7 +60,8 @@ impl Application {
                 .route("/verify-2fa", post(verify_2fa))
                 .route("/logout", post(logout))
                 .route("/verify-token", post(verify_token))
-                .with_state(app_state);
+                .with_state(app_state)
+                .layer(cors);
 
         let listener = TcpListener::bind(address).await?;
         let address = listener.local_addr()?.to_string();
@@ -73,6 +86,8 @@ impl IntoResponse for AuthAPIError {
         let (status, error_message) = match self {
             AuthAPIError::IncorrectCredentials => (StatusCode::UNAUTHORIZED, "Incorrect credentials"),
             AuthAPIError::InvalidCredentials => (StatusCode::BAD_REQUEST, "Invalid credentials"),
+            AuthAPIError::InvalidToken => (StatusCode::UNAUTHORIZED, "Invalid token"),
+            AuthAPIError::MissingToken => (StatusCode::BAD_REQUEST, "Missing token"),
             AuthAPIError::UnexpectedError => (StatusCode::INTERNAL_SERVER_ERROR, "Unexpected error"),
             AuthAPIError::UserAlreadyExists => (StatusCode::CONFLICT, "User already exists"),
         };
