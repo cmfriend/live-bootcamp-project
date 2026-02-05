@@ -25,6 +25,8 @@ use routes::*;
 
 pub mod services;
 
+pub mod utils;
+
 // This struct encapsulates our application-related logic.
 pub struct Application {
     server: Serve<TcpListener, Router, Router>,
