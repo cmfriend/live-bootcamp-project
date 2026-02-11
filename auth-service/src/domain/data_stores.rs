@@ -39,7 +39,9 @@ pub trait TwoFACodeStore {
         login_attempt_id: LoginAttemptId,
         code: TwoFACode,
     ) -> Result<(), TwoFACodeStoreError>;
+
     async fn remove_code(&mut self, email: &Email) -> Result<(), TwoFACodeStoreError>;
+
     async fn get_code(
         &self,
         email: &Email,
@@ -84,7 +86,7 @@ impl TwoFACode {
             .parse::<u32>()
             .map_err(|_| "Invalid 2FA code".to_owned())?;
 
-        if (0..=999_999).contains(&code_as_u32) {
+        if (100_000..=999_999).contains(&code_as_u32) {
             Ok(Self(code))
         } else {
             Err("Invalid 2FA code".to_owned())
@@ -94,7 +96,7 @@ impl TwoFACode {
 
 impl Default for TwoFACode {
     fn default() -> Self {
-        Self(rand::rng().random_range(0..=999_999).to_string())
+        Self(rand::rng().random_range(100_000..=999_999).to_string())
     }
 }
 

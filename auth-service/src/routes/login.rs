@@ -75,7 +75,8 @@ async fn handle_2fa(
             return (jar, Err(AuthAPIError::UnexpectedError));
         }
 
-    if state.email_client
+    if state
+        .email_client
         .read()
         .await
         .send_email(&email, "App Service Login 2FA Code", code.as_ref())
