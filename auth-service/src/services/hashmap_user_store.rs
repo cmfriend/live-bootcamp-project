@@ -35,8 +35,8 @@ impl UserStore for HashmapUserStore {
         self
             .users
             .get(email)
+            .cloned()
             .ok_or(UserStoreError::UserNotFound)
-            .map(|user| User::new(user.email.clone(), user.password.clone(), user.requires_2fa))
     }
 
     // TODO: Implement a public method called `validate_user`, which takes an

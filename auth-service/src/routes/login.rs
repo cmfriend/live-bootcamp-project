@@ -68,14 +68,22 @@ async fn handle_2fa(
         .two_fa_code_store
         .write()
         .await
-        .add_code(email.clone(), login_attempt_id.clone(), code)
+        .add_code(email.clone(), login_attempt_id.clone(), code.clone())
         .await
         .map_err(|_| AuthAPIError::UnexpectedError)
         .is_err() {
             return (jar, Err(AuthAPIError::UnexpectedError));
         }
 
-    // Finally, we need to return the login attempt ID to the client
+    if state.email_client
+        .read()
+        .await
+        .send_email(&email, "App Service Login 2FA Code", code.as_ref())
+        .await
+        .is_err() {
+            return (jar, Err(AuthAPIError::UnexpectedError));
+        }
+
     let response =
         Json(LoginResponse::TwoFactorAuth(TwoFactorAuthResponse {
             message: "2FA required".to_owned(),
