@@ -13,6 +13,7 @@ use serde::{Deserialize, Serialize};
 
 use tokio::net::TcpListener;
 use tower_http::{cors::CorsLayer, services::{ServeDir, ServeFile}};
+use sqlx::{postgres::PgPoolOptions, PgPool};
 
 use std::error::Error;
 
@@ -98,4 +99,8 @@ impl IntoResponse for AuthAPIError {
 
         (status, body).into_response()
     }
+}
+
+pub async fn get_postgres_pool(url: &str) -> Result<PgPool, sqlx::Error> {
+    PgPoolOptions::new().max_connections(5).connect(url).await
 }
