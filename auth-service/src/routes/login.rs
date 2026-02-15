@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     app_state::AppState,
-    domain::{AuthAPIError, Email, LoginAttemptId, Password, TwoFACode},
+    domain::{AuthAPIError, Email, HashedPassword, LoginAttemptId, TwoFACode},
     utils::auth::generate_auth_cookie,
 };
 
@@ -18,19 +18,19 @@ pub async fn login(
     jar: CookieJar,
     Json(request): Json<LoginRequest>
 ) -> (CookieJar, Result<impl IntoResponse, AuthAPIError>) {
+    match HashedPassword::parse(request.password.clone()).await.map_err(|_| AuthAPIError::InvalidCredentials) {
+        Ok(_) => (),
+        Err(e) => return (jar, Err(e)),
+    };
+
     let email = match Email::parse(request.email).map_err(|_| AuthAPIError::InvalidCredentials) {
         Ok(email) => email,
         Err(e) => return (jar, Err(e)),
     };
 
-    let password = match Password::parse(request.password).map_err(|_| AuthAPIError::InvalidCredentials) {
-        Ok(password) => password,
-        Err(e) => return (jar, Err(e)),
-    };
-
     let user_store = &state.user_store.read().await;
 
-    if user_store.validate_user(&email, &password).await.is_err() {
+    if user_store.validate_user(&email, &request.password).await.is_err() {
         return (jar, Err(AuthAPIError::IncorrectCredentials));
     }
 
@@ -39,17 +39,9 @@ pub async fn login(
         Err(e) => return (jar, Err(e)),
     };
 
-    let auth_cookie = match generate_auth_cookie(&email).map_err(|_| AuthAPIError::UnexpectedError) {
-        Ok(cookie) => cookie,
-        Err(e) => return (jar, Err(e)),
-    };
-
-    let updated_jar = jar.add(auth_cookie);
-
-    // Handle request based on user's 2FA configuration
     match user.requires_2fa {
-        true => handle_2fa(updated_jar, &user.email, &state).await,
-        false => handle_no_2fa(&user.email, updated_jar).await,
+        true => handle_2fa(jar, &user.email, &state).await,
+        false => handle_no_2fa(&user.email, jar).await,
     }
 }
 
@@ -95,21 +87,20 @@ async fn handle_2fa(
 }
 
 async fn handle_no_2fa(
-    _email: &Email,
+    email: &Email,
     jar: CookieJar,
 ) -> (
     CookieJar,
     Result<(StatusCode, Json<LoginResponse>), AuthAPIError>,
 ) {
-    (
-        jar,
-        Ok(
-            (
-                StatusCode::OK,
-                Json(LoginResponse::RegularAuth)
-            )
-        )
-    )
+    let auth_cookie = match generate_auth_cookie(email).map_err(|_| AuthAPIError::UnexpectedError) {
+        Ok(cookie) => cookie,
+        Err(e) => return (jar, Err(e)),
+    };
+
+    let updated_jar = jar.add(auth_cookie);
+
+    (updated_jar, Ok((StatusCode::OK, Json(LoginResponse::RegularAuth))))
 }
 
 #[derive(Deserialize)]

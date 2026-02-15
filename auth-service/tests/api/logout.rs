@@ -96,7 +96,10 @@ async fn should_return_200_if_valid_jwt_cookie() {
     assert!(auth_cookie.value().is_empty());
 
     let banned_token_store = app.banned_token_store.read().await;
-    let contains_token = banned_token_store.contains_token(token).await.expect("Unable to check for banned token");
+    let contains_token = banned_token_store
+        .contains_token(token)
+        .await
+        .expect("Unable to check for banned token");
     assert!(contains_token);
 }
 

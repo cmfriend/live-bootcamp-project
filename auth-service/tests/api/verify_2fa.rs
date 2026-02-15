@@ -89,13 +89,11 @@ async fn should_return_400_if_invalid_input() {
 async fn should_return_401_if_incorrect_credentials() {
     let app = TestApp::new().await;
 
-    let test_cases = [
-        serde_json::json!({
-            "email": get_random_email(),
-            "loginAttemptId": LoginAttemptId::default().as_ref(),
-            "2FACode": TwoFACode::default().as_ref(),
-        }),
-    ];
+    let test_cases = [serde_json::json!({
+        "email": get_random_email(),
+        "loginAttemptId": LoginAttemptId::default().as_ref(),
+        "2FACode": TwoFACode::default().as_ref(),
+    })];
 
     for test_case in test_cases.iter() {
         let response = app.post_verify_2fa(test_case).await;
@@ -111,8 +109,8 @@ async fn should_return_401_if_incorrect_credentials() {
 
 #[tokio::test]
 async fn should_return_401_if_old_code() {
-    // Call login twice. Then, attempt to call verify-fa with the 2FA code from the first login request. This should fail. 
-    
+    // Call login twice. Then, attempt to call verify-fa with the 2FA code from the first login request. This should fail.
+
     let app = TestApp::new().await;
 
     let random_email = get_random_email();
@@ -136,25 +134,23 @@ async fn should_return_401_if_old_code() {
 
     assert_eq!(response.status().as_u16(), 206);
 
-    let response_body =
-        response
-            .json::<TwoFactorAuthResponse>()
-            .await
-            .expect("Could not deserialize response body to TwoFactorAuthResponse");
+    let response_body = response
+        .json::<TwoFactorAuthResponse>()
+        .await
+        .expect("Could not deserialize response body to TwoFactorAuthResponse");
 
     assert_eq!(response_body.message, "2FA required".to_string());
     assert!(!response_body.login_attempt_id.is_empty());
 
     let login_attempt_id = response_body.login_attempt_id;
 
-    let (_, two_fa_code) =
-        app
-            .two_fa_code_store
-            .read()
-            .await
-            .get_code(&Email::parse(random_email.clone()).unwrap())
-            .await
-            .unwrap();
+    let (_, two_fa_code) = app
+        .two_fa_code_store
+        .read()
+        .await
+        .get_code(&Email::parse(random_email.clone()).unwrap())
+        .await
+        .unwrap();
 
     let two_fa_code = two_fa_code.as_ref();
 
@@ -162,12 +158,11 @@ async fn should_return_401_if_old_code() {
 
     assert_eq!(response.status().as_u16(), 206);
 
-    let request_body =
-        serde_json::json!({
-            "email": random_email,
-            "loginAttemptId": login_attempt_id,
-            "2FACode": two_fa_code,
-        });
+    let request_body = serde_json::json!({
+        "email": random_email,
+        "loginAttemptId": login_attempt_id,
+        "2FACode": two_fa_code,
+    });
 
     let response = app.post_verify_2fa(&request_body).await;
 
@@ -199,25 +194,23 @@ async fn should_return_200_if_correct_code() {
 
     assert_eq!(response.status().as_u16(), 206);
 
-    let response_body =
-        response
-            .json::<TwoFactorAuthResponse>()
-            .await
-            .expect("Could not deserialize response body to TwoFactorAuthResponse");
+    let response_body = response
+        .json::<TwoFactorAuthResponse>()
+        .await
+        .expect("Could not deserialize response body to TwoFactorAuthResponse");
 
     assert_eq!(response_body.message, "2FA required".to_string());
     assert!(!response_body.login_attempt_id.is_empty());
 
     let login_attempt_id: &str = response_body.login_attempt_id.as_ref();
 
-    let (_, stored_two_fa_code) =
-        app
-            .two_fa_code_store
-            .read()
-            .await
-            .get_code(&Email::parse(random_email.clone()).unwrap())
-            .await
-            .unwrap();
+    let (_, stored_two_fa_code) = app
+        .two_fa_code_store
+        .read()
+        .await
+        .get_code(&Email::parse(random_email.clone()).unwrap())
+        .await
+        .unwrap();
 
     let stored_two_fa_code = stored_two_fa_code.as_ref();
 
@@ -240,7 +233,7 @@ async fn should_return_200_if_correct_code() {
 }
 
 #[tokio::test]
-async fn should_return_401_if_same_code_twice() {    
+async fn should_return_401_if_same_code_twice() {
     let app = TestApp::new().await;
 
     let random_email = get_random_email();
@@ -264,25 +257,23 @@ async fn should_return_401_if_same_code_twice() {
 
     assert_eq!(response.status().as_u16(), 206);
 
-    let response_body =
-        response
-            .json::<TwoFactorAuthResponse>()
-            .await
-            .expect("Could not deserialize response body to TwoFactorAuthResponse");
+    let response_body = response
+        .json::<TwoFactorAuthResponse>()
+        .await
+        .expect("Could not deserialize response body to TwoFactorAuthResponse");
 
     assert_eq!(response_body.message, "2FA required".to_string());
     assert!(!response_body.login_attempt_id.is_empty());
 
     let login_attempt_id: &str = response_body.login_attempt_id.as_ref();
 
-    let (_, stored_two_fa_code) =
-        app
-            .two_fa_code_store
-            .read()
-            .await
-            .get_code(&Email::parse(random_email.clone()).unwrap())
-            .await
-            .unwrap();
+    let (_, stored_two_fa_code) = app
+        .two_fa_code_store
+        .read()
+        .await
+        .get_code(&Email::parse(random_email.clone()).unwrap())
+        .await
+        .unwrap();
 
     let stored_two_fa_code = stored_two_fa_code.as_ref();
 

@@ -1,5 +1,7 @@
-use auth_service::{ErrorResponse, domain::Email, routes::TwoFactorAuthResponse, utils::constants::JWT_COOKIE_NAME};
 use crate::helpers::{get_random_email, TestApp};
+use auth_service::{
+    domain::Email, routes::TwoFactorAuthResponse, utils::constants::JWT_COOKIE_NAME, ErrorResponse,
+};
 
 #[tokio::test]
 async fn should_return_422_if_malformed_credentials() {
@@ -47,9 +49,19 @@ async fn should_return_422_if_malformed_credentials() {
 
 #[tokio::test]
 async fn should_return_400_if_invalid_input() {
-    // Call the log-in route with invalid credentials and assert that a
-    // 400 HTTP status code is returned along with the appropriate error message. 
     let app = TestApp::new().await;
+
+    let random_email = get_random_email();
+
+    let signup_body = serde_json::json!({
+        "email": random_email,
+        "password": "password123",
+        "requires2FA": false
+    });
+
+    let response = app.post_signup(&signup_body).await;
+
+    assert_eq!(response.status().as_u16(), 201);
 
     let test_cases = [
         serde_json::json!({
@@ -61,7 +73,7 @@ async fn should_return_400_if_invalid_input() {
             "password": "password123",
         }),
         serde_json::json!({
-            "email": get_random_email(),
+            "email": random_email,
             "password": "abc",
         }),
     ];
@@ -89,14 +101,12 @@ async fn should_return_400_if_invalid_input() {
 
 #[tokio::test]
 async fn should_return_401_if_incorrect_credentials() {
-    // Call the log-in route with incorrect credentials and assert
-    // that a 401 HTTP status code is returned along with the appropriate error message.
     let app = TestApp::new().await;
 
     let body = serde_json::json!({
-            "email": get_random_email(),
-            "password": "abcabcabcabc",
-        });
+        "email": get_random_email(),
+        "password": "abcabcabcabc",
+    });
 
     let response = app.post_login(&body).await;
 
@@ -184,8 +194,7 @@ async fn should_return_206_if_valid_credentials_and_2fa_enabled() {
 
     let email = Email::parse(random_email).unwrap();
     let login_attempt_id = json_body.login_attempt_id;
-    let (stored_login_attempt_id, _) =
-        app
+    let (stored_login_attempt_id, _) = app
         .two_fa_code_store
         .read()
         .await

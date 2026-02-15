@@ -1,7 +1,4 @@
-use auth_service::{
-    utils::constants::JWT_COOKIE_NAME,
-    ErrorResponse
-};
+use auth_service::{utils::constants::JWT_COOKIE_NAME, ErrorResponse};
 
 use crate::helpers::{get_random_email, TestApp};
 
@@ -149,7 +146,7 @@ async fn should_return_401_if_banned_token() {
     let response = app.post_logout().await;
 
     assert_eq!(response.status().as_u16(), 200);
-    
+
     let body = serde_json::json!({
         "token": token,
     });

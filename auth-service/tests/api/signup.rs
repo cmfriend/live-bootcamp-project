@@ -162,12 +162,11 @@ async fn should_return_409_if_email_already_exists() {
 
     let email = get_random_email();
 
-    let first_test =
-        serde_json::json!({
-            "email": email,
-            "password": "password123",
-            "requires2FA": true,
-        });
+    let first_test = serde_json::json!({
+        "email": email,
+        "password": "password123",
+        "requires2FA": true,
+    });
 
     let first_response = app.post_signup(&first_test).await;
 
@@ -178,12 +177,11 @@ async fn should_return_409_if_email_already_exists() {
         first_test
     );
 
-    let second_test =
-        serde_json::json!({
-            "email": email,
-            "password": "password123",
-            "requires2FA": true,
-        });
+    let second_test = serde_json::json!({
+        "email": email,
+        "password": "password123",
+        "requires2FA": true,
+    });
 
     let second_response = app.post_signup(&second_test).await;
 
