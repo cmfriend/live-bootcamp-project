@@ -19,9 +19,7 @@ impl HashedPassword {
             .map_err(|_| "Failed to hash password".to_string())
     }
 
-    pub fn parse_password_hash(
-        hash: String
-    ) -> Result<HashedPassword, String>{
+    pub fn parse_password_hash(hash: String) -> Result<HashedPassword, String> {
         PasswordHash::new(&hash)
             .map(|ph| HashedPassword(ph.to_string()))
             .map_err(|_| "Failed to parse password hash".to_string())
@@ -60,7 +58,7 @@ async fn compute_password_hash(password: &str) -> Result<String, Box<dyn Error +
         .hash_password(password.as_bytes(), &salt)?
         .to_string();
 
-         Ok(password_hash)
+        Ok(password_hash)
     })
     .await?
 }
@@ -76,7 +74,7 @@ mod tests {
     use super::HashedPassword;
     use argon2::{
         password_hash::{rand_core::OsRng, SaltString},
-        Algorithm, Argon2, Params, PasswordHasher, Version
+        Algorithm, Argon2, Params, PasswordHasher, Version,
     };
     use fake::faker::internet::en::Password as FakePassword;
     use fake::Fake;
@@ -86,17 +84,17 @@ mod tests {
     #[tokio::test]
     async fn empty_string_is_rejected() {
         let password = "".to_owned();
-        
-        assert!(HashedPassword::parse(password).await.is_err()); 
+
+        assert!(HashedPassword::parse(password).await.is_err());
     }
 
     #[tokio::test]
     async fn string_less_than_8_characters_is_rejected() {
-      let password = "1234567".to_owned();
-      assert!(HashedPassword::parse(password).await.is_err());
+        let password = "1234567".to_owned();
+        assert!(HashedPassword::parse(password).await.is_err());
     }
-  
-   #[test]
+
+    #[test]
     fn can_parse_valid_argon2_hash() {
         // Arrange - Create a valid Argon2 hash
         let raw_password = "TestPassword123";
@@ -113,8 +111,7 @@ mod tests {
             .to_string();
 
         // Act
-        let hash_password = HashedPassword::parse_password_hash
-            (hash_string.clone()).unwrap();
+        let hash_password = HashedPassword::parse_password_hash(hash_string.clone()).unwrap();
 
         // Assert
         assert_eq!(hash_password.as_ref(), hash_string.as_str());
@@ -136,17 +133,17 @@ mod tests {
             .unwrap()
             .to_string();
 
-        let hash_password = HashedPassword::parse_password_hash(
-            hash_string
-            .clone())
-            .unwrap();
+        let hash_password = HashedPassword::parse_password_hash(hash_string.clone()).unwrap();
 
         assert_eq!(hash_password.as_ref(), hash_string.as_str());
         assert!(hash_password.as_ref().starts_with("$argon2id$v=19$"));
 
-        let result = hash_password.verify_raw_password(&raw_password).await.unwrap();
+        let result = hash_password
+            .verify_raw_password(&raw_password)
+            .await
+            .unwrap();
 
-       assert_eq!(result, ());
+        assert_eq!(result, ());
     }
 
     #[derive(Debug, Clone)]

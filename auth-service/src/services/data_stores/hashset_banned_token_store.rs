@@ -28,7 +28,10 @@ mod tests {
     async fn store_token_succeeds() {
         let mut token_store = HashsetBannedTokenStore::default();
 
-        assert!(token_store.store_token("some token string".to_string()).await.is_ok());
+        assert!(token_store
+            .store_token("some token string".to_string())
+            .await
+            .is_ok());
     }
 
     #[tokio::test]
@@ -46,12 +49,18 @@ mod tests {
     async fn contains_token_returns_false_for_missing_token() {
         let mut token_store = HashsetBannedTokenStore::default();
 
-        assert!(!token_store.contains_token("some token value").await.unwrap());
+        assert!(!token_store
+            .contains_token("some token value")
+            .await
+            .unwrap());
 
         let token = "some token value".to_string();
 
         token_store.tokens.insert(token.clone());
 
-        assert!(!token_store.contains_token("some other token value").await.unwrap());
+        assert!(!token_store
+            .contains_token("some other token value")
+            .await
+            .unwrap());
     }
 }

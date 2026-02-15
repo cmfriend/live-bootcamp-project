@@ -49,7 +49,8 @@ impl UserStore for PostgresUserStore {
         .map(|row| {
             Ok(User {
                 email: Email::parse(row.email).map_err(|_| UserStoreError::UnexpectedError)?,
-                password: HashedPassword::parse_password_hash(row.password_hash).map_err(|_| UserStoreError::UnexpectedError)?,
+                password: HashedPassword::parse_password_hash(row.password_hash)
+                    .map_err(|_| UserStoreError::UnexpectedError)?,
                 requires_2fa: row.requires_2fa,
             })
         })

@@ -13,7 +13,7 @@ pub fn generate_auth_cookie(email: &Email) -> Result<Cookie<'static>, GenerateTo
     Ok(create_auth_cookie(token))
 }
 
-// Create cookie and set the value to the passed-in token string 
+// Create cookie and set the value to the passed-in token string
 fn create_auth_cookie(token: String) -> Cookie<'static> {
     let cookie = Cookie::build((JWT_COOKIE_NAME, token))
         .path("/") // apply cookie to all URLs on the server
@@ -57,7 +57,10 @@ fn generate_auth_token(email: &Email) -> Result<String, GenerateTokenError> {
 }
 
 // Check if JWT auth token is valid by decoding it using the JWT secret
-pub async fn validate_token(token: &str, banned_token_store: BannedTokenStoreType) -> Result<Claims, jsonwebtoken::errors::Error> {
+pub async fn validate_token(
+    token: &str,
+    banned_token_store: BannedTokenStoreType,
+) -> Result<Claims, jsonwebtoken::errors::Error> {
     match banned_token_store.read().await.contains_token(token).await {
         Ok(value) => {
             if value {
@@ -72,7 +75,7 @@ pub async fn validate_token(token: &str, banned_token_store: BannedTokenStoreTyp
             ));
         }
     }
-    
+
     decode::<Claims>(
         token,
         &DecodingKey::from_secret(JWT_SECRET.as_bytes()),
@@ -101,9 +104,7 @@ mod tests {
     use std::sync::Arc;
     use tokio::sync::RwLock;
 
-    use crate::{
-        services::hashset_banned_token_store::HashsetBannedTokenStore,
-    };
+    use crate::services::hashset_banned_token_store::HashsetBannedTokenStore;
 
     use super::*;
 

@@ -11,9 +11,12 @@ pub mod domain;
 use domain::AuthAPIError;
 use serde::{Deserialize, Serialize};
 
-use tokio::net::TcpListener;
-use tower_http::{cors::CorsLayer, services::{ServeDir, ServeFile}};
 use sqlx::{postgres::PgPoolOptions, PgPool};
+use tokio::net::TcpListener;
+use tower_http::{
+    cors::CorsLayer,
+    services::{ServeDir, ServeFile},
+};
 
 use std::error::Error;
 
@@ -37,8 +40,8 @@ pub struct Application {
 
 impl Application {
     pub async fn build(app_state: AppState, address: &str) -> Result<Self, Box<dyn Error>> {
-        let assets_dir = ServeDir::new("assets")
-            .not_found_service(ServeFile::new("assets/index.html"));
+        let assets_dir =
+            ServeDir::new("assets").not_found_service(ServeFile::new("assets/index.html"));
 
         // Allow the app service(running on our local machine and in production) to call the auth service
         let allowed_origins = [
@@ -53,22 +56,21 @@ impl Application {
             .allow_credentials(true)
             .allow_origin(allowed_origins);
 
-        let router = 
-            Router::new()
-                .fallback_service(assets_dir)
-                .route("/signup", post(signup))
-                .route("/login", post(login))
-                .route("/verify-2fa", post(verify_2fa))
-                .route("/logout", post(logout))
-                .route("/verify-token", post(verify_token))
-                .with_state(app_state)
-                .layer(cors);
+        let router = Router::new()
+            .fallback_service(assets_dir)
+            .route("/signup", post(signup))
+            .route("/login", post(login))
+            .route("/verify-2fa", post(verify_2fa))
+            .route("/logout", post(logout))
+            .route("/verify-token", post(verify_token))
+            .with_state(app_state)
+            .layer(cors);
 
         let listener = TcpListener::bind(address).await?;
         let address = listener.local_addr()?.to_string();
         let server = axum::serve(listener, router);
 
-        Ok(Application { server, address, })
+        Ok(Application { server, address })
     }
 
     pub async fn run(self) -> Result<(), std::io::Error> {
@@ -85,11 +87,15 @@ pub struct ErrorResponse {
 impl IntoResponse for AuthAPIError {
     fn into_response(self) -> Response {
         let (status, error_message) = match self {
-            AuthAPIError::IncorrectCredentials => (StatusCode::UNAUTHORIZED, "Incorrect credentials"),
+            AuthAPIError::IncorrectCredentials => {
+                (StatusCode::UNAUTHORIZED, "Incorrect credentials")
+            }
             AuthAPIError::InvalidCredentials => (StatusCode::BAD_REQUEST, "Invalid credentials"),
             AuthAPIError::InvalidToken => (StatusCode::UNAUTHORIZED, "Invalid token"),
             AuthAPIError::MissingToken => (StatusCode::BAD_REQUEST, "Missing token"),
-            AuthAPIError::UnexpectedError => (StatusCode::INTERNAL_SERVER_ERROR, "Unexpected error"),
+            AuthAPIError::UnexpectedError => {
+                (StatusCode::INTERNAL_SERVER_ERROR, "Unexpected error")
+            }
             AuthAPIError::UserAlreadyExists => (StatusCode::CONFLICT, "User already exists"),
         };
 

@@ -1,9 +1,4 @@
-use axum::{
-    extract::State,
-    http::StatusCode,
-    response::IntoResponse,
-    Json,
-};
+use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
 use axum_extra::extract::CookieJar;
 use serde::{Deserialize, Serialize};
 
@@ -16,9 +11,12 @@ use crate::{
 pub async fn login(
     State(state): State<AppState>,
     jar: CookieJar,
-    Json(request): Json<LoginRequest>
+    Json(request): Json<LoginRequest>,
 ) -> (CookieJar, Result<impl IntoResponse, AuthAPIError>) {
-    match HashedPassword::parse(request.password.clone()).await.map_err(|_| AuthAPIError::InvalidCredentials) {
+    match HashedPassword::parse(request.password.clone())
+        .await
+        .map_err(|_| AuthAPIError::InvalidCredentials)
+    {
         Ok(_) => (),
         Err(e) => return (jar, Err(e)),
     };
@@ -30,11 +28,19 @@ pub async fn login(
 
     let user_store = &state.user_store.read().await;
 
-    if user_store.validate_user(&email, &request.password).await.is_err() {
+    if user_store
+        .validate_user(&email, &request.password)
+        .await
+        .is_err()
+    {
         return (jar, Err(AuthAPIError::IncorrectCredentials));
     }
 
-    let user = match user_store.get_user(&email).await.map_err(|_| AuthAPIError::IncorrectCredentials) {
+    let user = match user_store
+        .get_user(&email)
+        .await
+        .map_err(|_| AuthAPIError::IncorrectCredentials)
+    {
         Ok(user) => user,
         Err(e) => return (jar, Err(e)),
     };
@@ -48,7 +54,7 @@ pub async fn login(
 async fn handle_2fa(
     jar: CookieJar,
     email: &Email,
-    state: &AppState
+    state: &AppState,
 ) -> (
     CookieJar,
     Result<(StatusCode, Json<LoginResponse>), AuthAPIError>,
@@ -63,9 +69,10 @@ async fn handle_2fa(
         .add_code(email.clone(), login_attempt_id.clone(), code.clone())
         .await
         .map_err(|_| AuthAPIError::UnexpectedError)
-        .is_err() {
-            return (jar, Err(AuthAPIError::UnexpectedError));
-        }
+        .is_err()
+    {
+        return (jar, Err(AuthAPIError::UnexpectedError));
+    }
 
     if state
         .email_client
@@ -73,15 +80,15 @@ async fn handle_2fa(
         .await
         .send_email(&email, "App Service Login 2FA Code", code.as_ref())
         .await
-        .is_err() {
-            return (jar, Err(AuthAPIError::UnexpectedError));
-        }
+        .is_err()
+    {
+        return (jar, Err(AuthAPIError::UnexpectedError));
+    }
 
-    let response =
-        Json(LoginResponse::TwoFactorAuth(TwoFactorAuthResponse {
-            message: "2FA required".to_owned(),
-            login_attempt_id: login_attempt_id.as_ref().to_string(),
-        }));
+    let response = Json(LoginResponse::TwoFactorAuth(TwoFactorAuthResponse {
+        message: "2FA required".to_owned(),
+        login_attempt_id: login_attempt_id.as_ref().to_string(),
+    }));
 
     (jar, Ok((StatusCode::PARTIAL_CONTENT, response)))
 }
@@ -100,7 +107,10 @@ async fn handle_no_2fa(
 
     let updated_jar = jar.add(auth_cookie);
 
-    (updated_jar, Ok((StatusCode::OK, Json(LoginResponse::RegularAuth))))
+    (
+        updated_jar,
+        Ok((StatusCode::OK, Json(LoginResponse::RegularAuth))),
+    )
 }
 
 #[derive(Deserialize)]

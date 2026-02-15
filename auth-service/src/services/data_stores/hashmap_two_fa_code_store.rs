@@ -53,7 +53,9 @@ mod tests {
         let email = Email::parse("bob@example.com".to_string()).unwrap();
         let login_attempt_id = LoginAttemptId::default();
         let code = TwoFACode::default();
-        let result = store.add_code(email.clone(), login_attempt_id.clone(), code.clone()).await;
+        let result = store
+            .add_code(email.clone(), login_attempt_id.clone(), code.clone())
+            .await;
 
         assert!(result.is_ok());
         assert!(store.codes.len() == 1);
@@ -68,7 +70,9 @@ mod tests {
         let login_attempt_id = LoginAttemptId::default();
         let code = TwoFACode::default();
 
-        store.codes.insert(email.clone(), (login_attempt_id.clone(), code.clone()));
+        store
+            .codes
+            .insert(email.clone(), (login_attempt_id.clone(), code.clone()));
 
         assert!(store.codes.len() == 1);
         assert_eq!(store.codes.get(&email), Some(&(login_attempt_id, code)));
@@ -100,7 +104,9 @@ mod tests {
         let login_attempt_id = LoginAttemptId::default();
         let code = TwoFACode::default();
 
-        store.codes.insert(email.clone(), (login_attempt_id.clone(), code.clone()));
+        store
+            .codes
+            .insert(email.clone(), (login_attempt_id.clone(), code.clone()));
 
         let result = store.get_code(&email).await;
 
