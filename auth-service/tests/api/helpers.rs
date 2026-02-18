@@ -1,15 +1,12 @@
 use auth_service::{
-    Application,
     app_state::{AppState, BannedTokenStoreType, TwoFACodeStoreType},
-    get_postgres_pool,
-    get_redis_client,
+    get_postgres_pool, get_redis_client,
     services::{
-        MockEmailClient,
-        RedisBannedTokenStore,
-        RedisTwoFACodeStore,
-        data_stores::postgres_user_store::PostgresUserStore
+        data_stores::postgres_user_store::PostgresUserStore, MockEmailClient,
+        RedisBannedTokenStore, RedisTwoFACodeStore,
     },
-    utils::constants::{DATABASE_URL, DEFAULT_REDIS_HOSTNAME, test}
+    utils::constants::{test, DATABASE_URL, DEFAULT_REDIS_HOSTNAME},
+    Application,
 };
 use reqwest::cookie::Jar;
 use sqlx::{
@@ -45,7 +42,8 @@ impl TestApp {
         let pg_pool = configure_postgresql(&db_name).await;
         let user_store = Arc::new(RwLock::new(PostgresUserStore::new(pg_pool)));
         let redis_conn = Arc::new(RwLock::new(configure_redis()));
-        let banned_token_store = Arc::new(RwLock::new(RedisBannedTokenStore::new(redis_conn.clone())));
+        let banned_token_store =
+            Arc::new(RwLock::new(RedisBannedTokenStore::new(redis_conn.clone())));
         let two_fa_code_store = Arc::new(RwLock::new(RedisTwoFACodeStore::new(redis_conn)));
         let email_client = Arc::new(RwLock::new(MockEmailClient {}));
         let app_state = AppState::new(

@@ -29,9 +29,13 @@ impl TwoFACodeStore for RedisTwoFACodeStore {
     ) -> Result<(), TwoFACodeStoreError> {
         let key = get_key(&email);
 
-        let raw_tuple = TwoFATuple(login_attempt_id.as_ref().to_string(), code.as_ref().to_string());
+        let raw_tuple = TwoFATuple(
+            login_attempt_id.as_ref().to_string(),
+            code.as_ref().to_string(),
+        );
 
-        let tuple = serde_json::to_string(&raw_tuple).map_err(|_| TwoFACodeStoreError::UnexpectedError)?;
+        let tuple =
+            serde_json::to_string(&raw_tuple).map_err(|_| TwoFACodeStoreError::UnexpectedError)?;
 
         self.conn
             .write()
@@ -56,17 +60,21 @@ impl TwoFACodeStore for RedisTwoFACodeStore {
     ) -> Result<(LoginAttemptId, TwoFACode), TwoFACodeStoreError> {
         let key = get_key(email);
 
-        let stored_value = self.conn
+        let stored_value = self
+            .conn
             .write()
             .await
             .get::<_, String>(key)
             .map_err(|_| TwoFACodeStoreError::LoginAttemptIdNotFound)?;
 
-        let tuple = serde_json::from_str::<TwoFATuple>(&stored_value).map_err(|_| TwoFACodeStoreError::UnexpectedError)?;
+        let tuple = serde_json::from_str::<TwoFATuple>(&stored_value)
+            .map_err(|_| TwoFACodeStoreError::UnexpectedError)?;
 
-        let login_attempt_id = LoginAttemptId::parse(tuple.0).map_err(|_| TwoFACodeStoreError::UnexpectedError)?;
+        let login_attempt_id =
+            LoginAttemptId::parse(tuple.0).map_err(|_| TwoFACodeStoreError::UnexpectedError)?;
 
-        let two_fa_code = TwoFACode::parse(tuple.1).map_err(|_| TwoFACodeStoreError::UnexpectedError)?;
+        let two_fa_code =
+            TwoFACode::parse(tuple.1).map_err(|_| TwoFACodeStoreError::UnexpectedError)?;
 
         Ok((login_attempt_id, two_fa_code))
     }

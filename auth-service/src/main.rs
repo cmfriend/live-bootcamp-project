@@ -1,15 +1,10 @@
 use auth_service::{
-    Application,
     app_state::AppState,
-    get_postgres_pool,
-    get_redis_client,
-    services::{
-        MockEmailClient,
-        PostgresUserStore,
-        RedisBannedTokenStore,
-        RedisTwoFACodeStore
-    },
-    utils::constants::{DATABASE_URL, REDIS_HOST_NAME, prod}
+    get_postgres_pool, get_redis_client,
+    services::{MockEmailClient, PostgresUserStore, RedisBannedTokenStore, RedisTwoFACodeStore},
+    utils::constants::{prod, DATABASE_URL, REDIS_HOST_NAME},
+    utils::tracing::init_tracing,
+    Application,
 };
 use sqlx::PgPool;
 use std::sync::Arc;
@@ -17,6 +12,8 @@ use tokio::sync::RwLock;
 
 #[tokio::main]
 async fn main() {
+    init_tracing();
+
     let pg_pool = configure_postgresql().await;
     let user_store = Arc::new(RwLock::new(PostgresUserStore::new(pg_pool)));
     let redis_conn = Arc::new(RwLock::new(configure_redis()));
