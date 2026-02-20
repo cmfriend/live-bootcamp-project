@@ -9,15 +9,14 @@ use std::error::Error;
 pub struct HashedPassword(String);
 
 impl HashedPassword {
-    pub async fn parse(s: String) -> Result<Self, String> {
+    pub async fn parse(s: String) -> Result<Self> {
         if s.len() < 8 {
-            return Err("Invalid password provided.".to_string());
+            return Err(eyre!("Invalid password provided."));
         }
 
         compute_password_hash(&s)
             .await
             .map(|pass| HashedPassword(pass))
-            .map_err(|_| "Failed to parse password hash".to_string())
     }
 
     pub fn parse_password_hash(hash: String) -> Result<HashedPassword, String> {
@@ -66,7 +65,7 @@ async fn compute_password_hash(password: &str) -> Result<String> {
         current_span.in_scope(|| {
             let salt: SaltString = SaltString::generate(&mut OsRng);
 
-            let _password_hash = Argon2::new(
+            let password_hash = Argon2::new(
                 Algorithm::Argon2id,
                 Version::V0x13,
                 Params::new(15000, 2, 1, None)?,
@@ -74,8 +73,7 @@ async fn compute_password_hash(password: &str) -> Result<String> {
             .hash_password(password.as_bytes(), &salt)?
             .to_string();
 
-            //Ok(password_hash)
-            Err(eyre!("oh no!"))
+            Ok(password_hash)
         })
     })
     .await?

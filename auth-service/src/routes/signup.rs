@@ -15,7 +15,7 @@ pub async fn signup(
 
     let password = HashedPassword::parse(request.password)
         .await
-        .map_err(|_| AuthAPIError::InvalidCredentials)?;
+        .map_err(|e| AuthAPIError::UnexpectedError(e.into()))?;
 
     let mut user_store = state.user_store.write().await;
 
