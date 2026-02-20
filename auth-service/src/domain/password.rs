@@ -2,6 +2,7 @@ use argon2::{
     password_hash::{rand_core::OsRng, SaltString},
     Algorithm, Argon2, Params, PasswordHash, PasswordHasher, PasswordVerifier, Version,
 };
+use color_eyre::eyre::{eyre, Context, Result};
 use std::error::Error;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -16,7 +17,7 @@ impl HashedPassword {
         compute_password_hash(&s)
             .await
             .map(|pass| HashedPassword(pass))
-            .map_err(|_| "Failed to hash password".to_string())
+            .map_err(|_| "Failed to parse password hash".to_string())
     }
 
     pub fn parse_password_hash(hash: String) -> Result<HashedPassword, String> {
@@ -29,7 +30,7 @@ impl HashedPassword {
     pub async fn verify_raw_password(
         &self,
         password_candidate: &str,
-    ) -> Result<(), Box<dyn Error + Send + Sync>> {
+    ) -> Result<()> {
         let current_span: tracing::Span = tracing::Span::current();
 
         let password_hash = self.as_ref().to_owned();
@@ -52,7 +53,7 @@ impl HashedPassword {
 
 // Helper function to hash passwords before persisting them in storage.
 #[tracing::instrument(name = "Computing password hash", skip_all)]
-async fn compute_password_hash(password: &str) -> Result<String, Box<dyn Error + Send + Sync>> {
+async fn compute_password_hash(password: &str) -> Result<String> {
     // This line retrieves the current span from the tracing context.
     // The span represents the execution context for the compute_password_hash function.
     let current_span: tracing::Span = tracing::Span::current();
@@ -65,7 +66,7 @@ async fn compute_password_hash(password: &str) -> Result<String, Box<dyn Error +
         current_span.in_scope(|| {
             let salt: SaltString = SaltString::generate(&mut OsRng);
 
-            let password_hash = Argon2::new(
+            let _password_hash = Argon2::new(
                 Algorithm::Argon2id,
                 Version::V0x13,
                 Params::new(15000, 2, 1, None)?,
@@ -73,7 +74,8 @@ async fn compute_password_hash(password: &str) -> Result<String, Box<dyn Error +
             .hash_password(password.as_bytes(), &salt)?
             .to_string();
 
-            Ok(password_hash)
+            //Ok(password_hash)
+            Err(eyre!("oh no!"))
         })
     })
     .await?
