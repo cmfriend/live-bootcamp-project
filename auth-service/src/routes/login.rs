@@ -8,6 +8,7 @@ use crate::{
     utils::auth::generate_auth_cookie,
 };
 
+#[tracing::instrument(name = "Login", skip_all)]
 pub async fn login(
     State(state): State<AppState>,
     jar: CookieJar,
@@ -51,6 +52,7 @@ pub async fn login(
     }
 }
 
+#[tracing::instrument(name = "Handle 2FA flow", skip_all)]
 async fn handle_2fa(
     jar: CookieJar,
     email: &Email,
@@ -62,27 +64,22 @@ async fn handle_2fa(
     let login_attempt_id = LoginAttemptId::default();
     let code = TwoFACode::default();
 
-    if state
+    if let Err(e) = state
         .two_fa_code_store
         .write()
         .await
         .add_code(email.clone(), login_attempt_id.clone(), code.clone())
         .await
-        .map_err(|_| AuthAPIError::UnexpectedError)
-        .is_err()
     {
-        return (jar, Err(AuthAPIError::UnexpectedError));
+        return (jar, Err(AuthAPIError::UnexpectedError(e.into())));
     }
 
-    if state
+    if let Err(e) = state
         .email_client
-        .read()
+        .send_email(email, "2FA Code", code.as_ref())
         .await
-        .send_email(&email, "App Service Login 2FA Code", code.as_ref())
-        .await
-        .is_err()
     {
-        return (jar, Err(AuthAPIError::UnexpectedError));
+        return (jar, Err(AuthAPIError::UnexpectedError(e)));
     }
 
     let response = Json(LoginResponse::TwoFactorAuth(TwoFactorAuthResponse {
@@ -93,6 +90,7 @@ async fn handle_2fa(
     (jar, Ok((StatusCode::PARTIAL_CONTENT, response)))
 }
 
+#[tracing::instrument(name = "Handle non-2FA flow", skip_all)]
 async fn handle_no_2fa(
     email: &Email,
     jar: CookieJar,
@@ -100,9 +98,9 @@ async fn handle_no_2fa(
     CookieJar,
     Result<(StatusCode, Json<LoginResponse>), AuthAPIError>,
 ) {
-    let auth_cookie = match generate_auth_cookie(email).map_err(|_| AuthAPIError::UnexpectedError) {
+    let auth_cookie = match generate_auth_cookie(email) {
         Ok(cookie) => cookie,
-        Err(e) => return (jar, Err(e)),
+        Err(e) => return (jar, Err(AuthAPIError::UnexpectedError(e))),
     };
 
     let updated_jar = jar.add(auth_cookie);
