@@ -1,8 +1,8 @@
+use argon2::password_hash::rand_core::OsRng;
 use argon2::{
     password_hash::SaltString, Algorithm, Argon2, Params, PasswordHash, PasswordHasher,
     PasswordVerifier, Version,
 };
-use argon2::password_hash::rand_core::OsRng;
 use color_eyre::eyre::{Context, Result};
 
 use secrecy::{ExposeSecret, SecretString};
@@ -61,7 +61,6 @@ impl UserStore for PostgresUserStore {
         .await
         .map_err(|e| UserStoreError::UnexpectedError(e.into()))?
         .map(|row| {
-
             let parsed_hash = PasswordHash::new(&row.password_hash)
                 .wrap_err("Invalid password hash stored in database")
                 .map_err(UserStoreError::UnexpectedError)?;
@@ -123,14 +122,14 @@ async fn compute_password_hash(password: SecretString) -> Result<SecretString> {
 
     let result = tokio::task::spawn_blocking(move || {
         current_span.in_scope(|| {
-        let salt: SaltString = SaltString::generate(&mut OsRng);
-        let password_hash = Argon2::new(
-            Algorithm::Argon2id,
-            Version::V0x13,
-            Params::new(15000, 2, 1, None)?,
-        )
-        .hash_password(password.expose_secret().as_bytes(), &salt)?
-        .to_string();
+            let salt: SaltString = SaltString::generate(&mut OsRng);
+            let password_hash = Argon2::new(
+                Algorithm::Argon2id,
+                Version::V0x13,
+                Params::new(15000, 2, 1, None)?,
+            )
+            .hash_password(password.expose_secret().as_bytes(), &salt)?
+            .to_string();
 
             Ok(SecretString::new(password_hash.into_boxed_str()))
         })

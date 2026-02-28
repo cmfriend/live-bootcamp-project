@@ -129,7 +129,10 @@ fn log_error_chain(e: &(dyn Error + 'static)) {
 }
 
 pub async fn get_postgres_pool(url: &SecretString) -> Result<PgPool, sqlx::Error> {
-    PgPoolOptions::new().max_connections(5).connect(url.expose_secret()).await
+    PgPoolOptions::new()
+        .max_connections(5)
+        .connect(url.expose_secret())
+        .await
 }
 
 pub fn get_redis_client(redis_hostname: String) -> RedisResult<Client> {

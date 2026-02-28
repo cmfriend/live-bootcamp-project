@@ -36,10 +36,9 @@ impl TwoFACodeStore for RedisTwoFACodeStore {
             code.as_ref().expose_secret().to_string(),
         );
 
-        let tuple =
-            serde_json::to_string(&raw_tuple)
-                .wrap_err("failed to serialize 2FA tuple")
-                .map_err(TwoFACodeStoreError::UnexpectedError)?;
+        let tuple = serde_json::to_string(&raw_tuple)
+            .wrap_err("failed to serialize 2FA tuple")
+            .map_err(TwoFACodeStoreError::UnexpectedError)?;
 
         self.conn
             .write()
@@ -74,8 +73,9 @@ impl TwoFACodeStore for RedisTwoFACodeStore {
                     .wrap_err("failed to deserialize 2FA tuple")
                     .map_err(TwoFACodeStoreError::UnexpectedError)?;
 
-                let login_attempt_id = LoginAttemptId::parse(SecretString::new(data.0.into_boxed_str()))
-                    .map_err(TwoFACodeStoreError::UnexpectedError)?;
+                let login_attempt_id =
+                    LoginAttemptId::parse(SecretString::new(data.0.into_boxed_str()))
+                        .map_err(TwoFACodeStoreError::UnexpectedError)?;
 
                 let email_code = TwoFACode::parse(SecretString::new(data.1.into_boxed_str()))
                     .map_err(TwoFACodeStoreError::UnexpectedError)?;

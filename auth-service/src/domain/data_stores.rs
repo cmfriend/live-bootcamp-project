@@ -10,7 +10,8 @@ pub trait UserStore {
 
     async fn get_user(&self, email: &Email) -> Result<User, UserStoreError>;
 
-    async fn validate_user(&self, email: &Email, password: &Password) -> Result<(), UserStoreError>;
+    async fn validate_user(&self, email: &Email, password: &Password)
+        -> Result<(), UserStoreError>;
 }
 
 #[async_trait::async_trait]
@@ -104,9 +105,9 @@ impl LoginAttemptId {
 
 impl Default for LoginAttemptId {
     fn default() -> Self {
-        Self(
-            SecretString::new(uuid::Uuid::new_v4().to_string().into_boxed_str())
-        )
+        Self(SecretString::new(
+            uuid::Uuid::new_v4().to_string().into_boxed_str(),
+        ))
     }
 }
 
@@ -138,8 +139,12 @@ impl TwoFACode {
 
 impl Default for TwoFACode {
     fn default() -> Self {
-        Self(SecretString::new(rand::rng().
-            random_range(100_000..=999_999).to_string().into_boxed_str()))
+        Self(SecretString::new(
+            rand::rng()
+                .random_range(100_000..=999_999)
+                .to_string()
+                .into_boxed_str(),
+        ))
     }
 }
 

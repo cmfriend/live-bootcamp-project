@@ -8,12 +8,7 @@ pub struct MockEmailClient;
 #[async_trait::async_trait]
 impl EmailClient for MockEmailClient {
     #[tracing::instrument(name = "Sending email", skip_all)]
-    async fn send_email(
-        &self,
-        recipient: &Email,
-        subject: &str,
-        content: &str,
-    ) -> Result<()> {
+    async fn send_email(&self, recipient: &Email, subject: &str, content: &str) -> Result<()> {
         tracing::info!(
             "Sending email to {} with subject: {} and content: {}",
             recipient.as_ref().expose_secret(),

@@ -3,6 +3,8 @@ use auth_service::{
     domain::Email, routes::TwoFactorAuthResponse, utils::constants::JWT_COOKIE_NAME, ErrorResponse,
 };
 use secrecy::{ExposeSecret, SecretString};
+use wiremock::matchers::{method, path};
+use wiremock::{Mock, ResponseTemplate};
 
 #[tokio::test]
 async fn should_return_422_if_malformed_credentials() {
@@ -173,44 +175,54 @@ async fn should_return_200_if_valid_credentials_and_2fa_disabled() {
 async fn should_return_206_if_valid_credentials_and_2fa_enabled() {
     let mut app = TestApp::new().await;
 
-    let random_email = get_random_email();
+    {
+        let random_email = get_random_email();
 
-    let signup_body = serde_json::json!({
-        "email": random_email,
-        "password": "password123",
-        "requires2FA": true
-    });
+        let signup_body = serde_json::json!({
+            "email": random_email,
+            "password": "password123",
+            "requires2FA": true
+        });
 
-    let response = app.post_signup(&signup_body).await;
+        let response = app.post_signup(&signup_body).await;
 
-    assert_eq!(response.status().as_u16(), 201);
+        assert_eq!(response.status().as_u16(), 201);
 
-    let login_body = serde_json::json!({
-        "email": random_email,
-        "password": "password123",
-    });
+        Mock::given(path("/email"))
+            .and(method("POST"))
+            .respond_with(ResponseTemplate::new(200))
+            .expect(1)
+            .mount(&app.email_server)
+            .await;
 
-    let response = app.post_login(&login_body).await;
+        let login_body = serde_json::json!({
+            "email": random_email,
+            "password": "password123"
+        });
 
-    assert_eq!(response.status().as_u16(), 206);
+        let response = app.post_login(&login_body).await;
 
-    let json_body = response
-        .json::<TwoFactorAuthResponse>()
-        .await
-        .expect("Could not deserialize response body to TwoFactorAuthResponse");
+        assert_eq!(response.status().as_u16(), 206);
 
-    assert_eq!(json_body.message, "2FA required".to_owned());
+        let json_body = response
+            .json::<TwoFactorAuthResponse>()
+            .await
+            .expect("Could not deserialize response body to TwoFactorAuthResponse");
 
-    let email = Email::parse(SecretString::new(random_email.into_boxed_str())).unwrap();
-    let login_attempt_id = json_body.login_attempt_id;
-    let (stored_login_attempt_id, _) = app
-        .two_fa_code_store
-        .read()
-        .await
-        .get_code(&email)
-        .await
-        .expect("Failed to get 2FA code");
-    assert_eq!(stored_login_attempt_id.as_ref().expose_secret(), login_attempt_id);
+        assert_eq!(json_body.message, "2FA required".to_owned());
+
+        let two_fa_code_store = app.two_fa_code_store.read().await;
+
+        let code_tuple = two_fa_code_store
+            .get_code(&Email::parse(SecretString::new(random_email.into_boxed_str())).unwrap())
+            .await
+            .expect("Failed to get 2FA code");
+
+        assert_eq!(
+            code_tuple.0.as_ref().expose_secret(),
+            &json_body.login_attempt_id
+        );
+    }
 
     app.clean_up().await;
 }

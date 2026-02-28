@@ -53,8 +53,7 @@ pub async fn verify_2fa(
         return (jar, Err(AuthAPIError::UnexpectedError(e.into())));
     }
 
-    let auth_cookie = match generate_auth_cookie(&email)
-    {
+    let auth_cookie = match generate_auth_cookie(&email) {
         Ok(cookie) => cookie,
         Err(e) => return (jar, Err(AuthAPIError::UnexpectedError(e))),
     };

@@ -24,11 +24,7 @@ impl Password {
     /// This is used when retrieving users from storage, not for validation.
     pub fn from_password_hash(hash: PasswordHash) -> Result<Password> {
         // `PasswordHash` implements Display — its string form is the PHC string.
-        Ok(
-            Self(
-                SecretString::new(hash.to_string().into_boxed_str()
-                ))
-        )
+        Ok(Self(SecretString::new(hash.to_string().into_boxed_str())))
     }
 }
 
@@ -46,15 +42,15 @@ impl AsRef<SecretString> for Password {
 mod tests {
     use super::Password;
 
+    use argon2::{
+        password_hash::{rand_core::OsRng, SaltString},
+        Algorithm, Argon2, Params, PasswordHash, PasswordHasher, Version,
+    };
     use fake::faker::internet::en::Password as FakePassword;
     use fake::Fake;
     use quickcheck::Gen;
     use rand::SeedableRng;
-    use secrecy::{SecretString, ExposeSecret};
-    use argon2::{
-        password_hash::{SaltString, rand_core::OsRng}, Algorithm, Argon2,
-        Params, PasswordHash, PasswordHasher, Version,
-    };
+    use secrecy::{ExposeSecret, SecretString};
 
     #[test]
     fn empty_string_is_rejected() {
@@ -79,7 +75,8 @@ mod tests {
         );
 
         let password_hash = argon2
-            .hash_password(raw_password.expose_secret().as_bytes(), &salt).unwrap()
+            .hash_password(raw_password.expose_secret().as_bytes(), &salt)
+            .unwrap()
             .to_string();
 
         let parsed_hash = PasswordHash::new(password_hash.as_ref()).unwrap();

@@ -52,7 +52,10 @@ mod tests {
 
         assert!(store.codes.is_empty());
 
-        let email = Email::parse(SecretString::new("bob@example.com".to_owned().into_boxed_str())).unwrap();
+        let email = Email::parse(SecretString::new(
+            "bob@example.com".to_owned().into_boxed_str(),
+        ))
+        .unwrap();
         let login_attempt_id = LoginAttemptId::default();
         let code = TwoFACode::default();
         let result = store
@@ -68,7 +71,10 @@ mod tests {
     async fn remove_code_successfully_removes_existing_code() {
         let mut store = HashmapTwoFACodeStore::default();
 
-        let email = Email::parse(SecretString::new("bob@example.com".to_owned().into_boxed_str())).unwrap();
+        let email = Email::parse(SecretString::new(
+            "bob@example.com".to_owned().into_boxed_str(),
+        ))
+        .unwrap();
         let login_attempt_id = LoginAttemptId::default();
         let code = TwoFACode::default();
 
@@ -91,7 +97,10 @@ mod tests {
 
         assert!(store.codes.is_empty());
 
-        let email = Email::parse(SecretString::new("bob@example.com".to_owned().into_boxed_str())).unwrap();
+        let email = Email::parse(SecretString::new(
+            "bob@example.com".to_owned().into_boxed_str(),
+        ))
+        .unwrap();
 
         let result = store.remove_code(&email).await;
 
@@ -102,7 +111,10 @@ mod tests {
     async fn get_code_successfully_gets_existing_code() {
         let mut store = HashmapTwoFACodeStore::default();
 
-        let email = Email::parse(SecretString::new("bob@example.com".to_owned().into_boxed_str())).unwrap();
+        let email = Email::parse(SecretString::new(
+            "bob@example.com".to_owned().into_boxed_str(),
+        ))
+        .unwrap();
         let login_attempt_id = LoginAttemptId::default();
         let code = TwoFACode::default();
 
@@ -120,7 +132,10 @@ mod tests {
     async fn get_code_fails_on_missing_code() {
         let store = HashmapTwoFACodeStore::default();
 
-        let email = Email::parse(SecretString::new("bob@example.com".to_owned().into_boxed_str())).unwrap();
+        let email = Email::parse(SecretString::new(
+            "bob@example.com".to_owned().into_boxed_str(),
+        ))
+        .unwrap();
         let result = store.get_code(&email).await;
 
         assert_eq!(result, Err(TwoFACodeStoreError::LoginAttemptIdNotFound));

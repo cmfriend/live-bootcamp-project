@@ -1,14 +1,15 @@
 use auth_service::{
     app_state::{AppState, BannedTokenStoreType, TwoFACodeStoreType},
+    domain::Email,
     get_postgres_pool, get_redis_client,
     services::{
-        data_stores::postgres_user_store::PostgresUserStore, MockEmailClient,
-        RedisBannedTokenStore, RedisTwoFACodeStore,
+        data_stores::postgres_user_store::PostgresUserStore,
+        postmark_email_client::PostmarkEmailClient, RedisBannedTokenStore, RedisTwoFACodeStore,
     },
     utils::constants::{test, DATABASE_URL, DEFAULT_REDIS_HOSTNAME},
     Application,
 };
-use reqwest::cookie::Jar;
+use reqwest::{cookie::Jar, Client};
 use secrecy::{ExposeSecret, SecretString};
 use sqlx::{
     postgres::{PgConnectOptions, PgConnection, PgPoolOptions},
@@ -18,15 +19,17 @@ use std::str::FromStr;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use uuid::Uuid;
+use wiremock::MockServer;
 
 pub struct TestApp {
     pub address: String,
-    pub cookie_jar: Arc<Jar>,
-    pub http_client: reqwest::Client,
     pub banned_token_store: BannedTokenStoreType,
-    pub two_fa_code_store: TwoFACodeStoreType,
-    pub db_name: String,
+    pub cookie_jar: Arc<Jar>,
     pub clean_up_called: bool,
+    pub db_name: String,
+    pub email_server: MockServer,
+    pub http_client: reqwest::Client,
+    pub two_fa_code_store: TwoFACodeStoreType,
 }
 
 impl Drop for TestApp {
@@ -41,12 +44,20 @@ impl TestApp {
     pub async fn new() -> Self {
         let db_name = Uuid::new_v4().to_string();
         let pg_pool = configure_postgresql(&db_name).await;
+
         let user_store = Arc::new(RwLock::new(PostgresUserStore::new(pg_pool)));
+
         let redis_conn = Arc::new(RwLock::new(configure_redis()));
+
         let banned_token_store =
             Arc::new(RwLock::new(RedisBannedTokenStore::new(redis_conn.clone())));
+
         let two_fa_code_store = Arc::new(RwLock::new(RedisTwoFACodeStore::new(redis_conn)));
-        let email_client = Arc::new(MockEmailClient);
+
+        let email_server = MockServer::start().await;
+        let base_url = email_server.uri();
+        let email_client = Arc::new(configure_postmark_email_client(base_url));
+
         let app_state = AppState::new(
             user_store,
             banned_token_store.clone(),
@@ -72,15 +83,15 @@ impl TestApp {
             .build()
             .unwrap();
 
-        // Create new `TestApp` instance and return it
         Self {
             address,
-            cookie_jar,
-            http_client,
             banned_token_store,
-            two_fa_code_store,
-            db_name,
+            cookie_jar,
             clean_up_called: false,
+            db_name,
+            email_server,
+            http_client,
+            two_fa_code_store,
         }
     }
 
@@ -168,15 +179,29 @@ async fn configure_postgresql(db_name: &str) -> PgPool {
 
     configure_database(&postgresql_conn_url, db_name).await;
 
-    let postgresql_conn_url_with_db = SecretString::new(format!(
-        "{}/{}",
-        postgresql_conn_url.expose_secret(),
-        db_name
-    ).into_boxed_str());
+    let postgresql_conn_url_with_db = SecretString::new(
+        format!("{}/{}", postgresql_conn_url.expose_secret(), db_name).into_boxed_str(),
+    );
 
     get_postgres_pool(&postgresql_conn_url_with_db)
         .await
         .expect("Failed to create Postgres connection pool!")
+}
+
+fn configure_postmark_email_client(base_url: String) -> PostmarkEmailClient {
+    let postmark_auth_token = SecretString::new("auth_token".to_owned().into_boxed_str());
+
+    let sender = Email::parse(SecretString::new(
+        test::email_client::SENDER.to_owned().into_boxed_str(),
+    ))
+    .unwrap();
+
+    let http_client = Client::builder()
+        .timeout(test::email_client::TIMEOUT)
+        .build()
+        .expect("Failed to build HTTP client");
+
+    PostmarkEmailClient::new(base_url, sender, postmark_auth_token, http_client)
 }
 
 async fn configure_database(db_conn_string: &SecretString, db_name: &str) {

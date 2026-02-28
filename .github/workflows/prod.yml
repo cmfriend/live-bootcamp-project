@@ -118,8 +118,9 @@ jobs:
         script: |
           cd ~
           export AUTH_SERVICE_IP=${{ vars.DROPLET_IP }}
-          export POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
           export JWT_SECRET=${{ secrets.JWT_SECRET }}
+          export POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+          export POSTMARK_AUTH_TOKEN=${{ secrets.POSTMARK_AUTH_TOKEN }}
           docker compose down
           docker compose pull
           docker compose up -d

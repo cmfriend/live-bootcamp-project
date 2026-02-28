@@ -30,7 +30,9 @@ mod tests {
         let mut token_store = HashsetBannedTokenStore::default();
 
         assert!(token_store
-            .store_token(SecretString::new("some token value".to_owned().into_boxed_str()))
+            .store_token(SecretString::new(
+                "some token value".to_owned().into_boxed_str()
+            ))
             .await
             .is_ok());
     }
@@ -51,7 +53,9 @@ mod tests {
         let mut token_store = HashsetBannedTokenStore::default();
 
         assert!(!token_store
-            .contains_token(&SecretString::new("some token value".to_owned().into_boxed_str()))
+            .contains_token(&SecretString::new(
+                "some token value".to_owned().into_boxed_str()
+            ))
             .await
             .unwrap());
 
@@ -60,7 +64,9 @@ mod tests {
         token_store.tokens.insert(token.clone());
 
         assert!(!token_store
-            .contains_token(&SecretString::new("some other token value".to_owned().into_boxed_str()))
+            .contains_token(&SecretString::new(
+                "some other token value".to_owned().into_boxed_str()
+            ))
             .await
             .unwrap());
     }
