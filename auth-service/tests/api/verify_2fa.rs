@@ -5,6 +5,7 @@ use auth_service::{
 };
 
 use crate::helpers::{get_random_email, TestApp};
+use secrecy::{ExposeSecret, SecretString};
 
 #[tokio::test]
 async fn should_return_422_if_malformed_input() {
@@ -94,8 +95,8 @@ async fn should_return_401_if_incorrect_credentials() {
 
     let test_cases = [serde_json::json!({
         "email": get_random_email(),
-        "loginAttemptId": LoginAttemptId::default().as_ref(),
-        "2FACode": TwoFACode::default().as_ref(),
+        "loginAttemptId": LoginAttemptId::default().as_ref().expose_secret(),
+        "2FACode": TwoFACode::default().as_ref().expose_secret(),
     })];
 
     for test_case in test_cases.iter() {
@@ -153,11 +154,11 @@ async fn should_return_401_if_old_code() {
         .two_fa_code_store
         .read()
         .await
-        .get_code(&Email::parse(random_email.clone()).unwrap())
+        .get_code(&Email::parse(SecretString::new(random_email.clone().into())).unwrap())
         .await
         .unwrap();
 
-    let two_fa_code = two_fa_code.as_ref();
+    let two_fa_code = two_fa_code.as_ref().expose_secret();
 
     let response = app.post_login(&login_body).await;
 
@@ -215,11 +216,11 @@ async fn should_return_200_if_correct_code() {
         .two_fa_code_store
         .read()
         .await
-        .get_code(&Email::parse(random_email.clone()).unwrap())
+        .get_code(&Email::parse(SecretString::new(random_email.clone().into())).unwrap())
         .await
         .unwrap();
 
-    let stored_two_fa_code = stored_two_fa_code.as_ref();
+    let stored_two_fa_code = stored_two_fa_code.as_ref().expose_secret();
 
     let verify_2fa_body = serde_json::json!({
         "email": random_email,
@@ -280,11 +281,11 @@ async fn should_return_401_if_same_code_twice() {
         .two_fa_code_store
         .read()
         .await
-        .get_code(&Email::parse(random_email.clone()).unwrap())
+        .get_code(&Email::parse(SecretString::new(random_email.clone().into())).unwrap())
         .await
         .unwrap();
 
-    let stored_two_fa_code = stored_two_fa_code.as_ref();
+    let stored_two_fa_code = stored_two_fa_code.as_ref().expose_secret();
 
     let verify_2fa_body = serde_json::json!({
         "email": random_email,

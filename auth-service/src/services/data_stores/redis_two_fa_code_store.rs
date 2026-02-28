@@ -5,6 +5,7 @@ use crate::domain::{
 
 use color_eyre::eyre::Context;
 use redis::{Commands, Connection};
+use secrecy::{ExposeSecret, SecretString};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -31,8 +32,8 @@ impl TwoFACodeStore for RedisTwoFACodeStore {
         let key = get_key(&email);
 
         let raw_tuple = TwoFATuple(
-            login_attempt_id.as_ref().to_string(),
-            code.as_ref().to_string(),
+            login_attempt_id.as_ref().expose_secret().to_string(),
+            code.as_ref().expose_secret().to_string(),
         );
 
         let tuple =
@@ -67,26 +68,22 @@ impl TwoFACodeStore for RedisTwoFACodeStore {
     ) -> Result<(LoginAttemptId, TwoFACode), TwoFACodeStoreError> {
         let key = get_key(email);
 
-        let stored_value = self
-            .conn
-            .write()
-            .await
-            .get::<_, String>(key)
-            .map_err(|_| TwoFACodeStoreError::LoginAttemptIdNotFound)?;
+        match self.conn.write().await.get::<_, String>(&key) {
+            Ok(value) => {
+                let data: TwoFATuple = serde_json::from_str(&value)
+                    .wrap_err("failed to deserialize 2FA tuple")
+                    .map_err(TwoFACodeStoreError::UnexpectedError)?;
 
-        let tuple = serde_json::from_str::<TwoFATuple>(&stored_value)
-            .wrap_err("failed to deserialize 2FA tuple")
-            .map_err(TwoFACodeStoreError::UnexpectedError)?;
+                let login_attempt_id = LoginAttemptId::parse(SecretString::new(data.0.into_boxed_str()))
+                    .map_err(TwoFACodeStoreError::UnexpectedError)?;
 
-        let login_attempt_id =
-            LoginAttemptId::parse(tuple.0)
-                .map_err(TwoFACodeStoreError::UnexpectedError)?;
+                let email_code = TwoFACode::parse(SecretString::new(data.1.into_boxed_str()))
+                    .map_err(TwoFACodeStoreError::UnexpectedError)?;
 
-        let two_fa_code =
-            TwoFACode::parse(tuple.1)
-                .map_err(TwoFACodeStoreError::UnexpectedError)?;
-
-        Ok((login_attempt_id, two_fa_code))
+                Ok((login_attempt_id, email_code))
+            }
+            Err(_) => Err(TwoFACodeStoreError::LoginAttemptIdNotFound),
+        }
     }
 }
 
@@ -97,5 +94,5 @@ const TEN_MINUTES_IN_SECONDS: u64 = 600;
 const TWO_FA_CODE_PREFIX: &str = "two_fa_code:";
 
 fn get_key(email: &Email) -> String {
-    format!("{}{}", TWO_FA_CODE_PREFIX, email.as_ref())
+    format!("{}{}", TWO_FA_CODE_PREFIX, email.as_ref().expose_secret())
 }

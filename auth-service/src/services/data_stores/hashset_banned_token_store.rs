@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 
 use crate::domain::{BannedTokenStore, BannedTokenStoreError};
+use secrecy::{ExposeSecret, SecretString};
 
 #[derive(Default)]
 pub struct HashsetBannedTokenStore {
@@ -9,14 +10,14 @@ pub struct HashsetBannedTokenStore {
 
 #[async_trait::async_trait]
 impl BannedTokenStore for HashsetBannedTokenStore {
-    async fn store_token(&mut self, token: String) -> Result<(), BannedTokenStoreError> {
-        self.tokens.insert(token);
+    async fn store_token(&mut self, token: SecretString) -> Result<(), BannedTokenStoreError> {
+        self.tokens.insert(token.expose_secret().to_string());
 
         Ok(())
     }
 
-    async fn contains_token(&self, token: &str) -> Result<bool, BannedTokenStoreError> {
-        Ok(self.tokens.contains(token))
+    async fn contains_token(&self, token: &SecretString) -> Result<bool, BannedTokenStoreError> {
+        Ok(self.tokens.contains(token.expose_secret()))
     }
 }
 
@@ -29,7 +30,7 @@ mod tests {
         let mut token_store = HashsetBannedTokenStore::default();
 
         assert!(token_store
-            .store_token("some token string".to_string())
+            .store_token(SecretString::new("some token value".to_owned().into_boxed_str()))
             .await
             .is_ok());
     }
@@ -38,9 +39,9 @@ mod tests {
     async fn contains_token_returns_true_for_found_token() {
         let mut token_store = HashsetBannedTokenStore::default();
 
-        let token = "some token value".to_string();
+        let token = SecretString::new("some token value".to_owned().into_boxed_str());
 
-        token_store.tokens.insert(token.clone());
+        token_store.tokens.insert(token.expose_secret().to_string());
 
         assert!(token_store.contains_token(&token).await.unwrap());
     }
@@ -50,7 +51,7 @@ mod tests {
         let mut token_store = HashsetBannedTokenStore::default();
 
         assert!(!token_store
-            .contains_token("some token value")
+            .contains_token(&SecretString::new("some token value".to_owned().into_boxed_str()))
             .await
             .unwrap());
 
@@ -59,7 +60,7 @@ mod tests {
         token_store.tokens.insert(token.clone());
 
         assert!(!token_store
-            .contains_token("some other token value")
+            .contains_token(&SecretString::new("some other token value".to_owned().into_boxed_str()))
             .await
             .unwrap());
     }

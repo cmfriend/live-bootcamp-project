@@ -2,6 +2,7 @@ use crate::helpers::{get_random_email, TestApp};
 use auth_service::{
     domain::Email, routes::TwoFactorAuthResponse, utils::constants::JWT_COOKIE_NAME, ErrorResponse,
 };
+use secrecy::{ExposeSecret, SecretString};
 
 #[tokio::test]
 async fn should_return_422_if_malformed_credentials() {
@@ -200,7 +201,7 @@ async fn should_return_206_if_valid_credentials_and_2fa_enabled() {
 
     assert_eq!(json_body.message, "2FA required".to_owned());
 
-    let email = Email::parse(random_email).unwrap();
+    let email = Email::parse(SecretString::new(random_email.into_boxed_str())).unwrap();
     let login_attempt_id = json_body.login_attempt_id;
     let (stored_login_attempt_id, _) = app
         .two_fa_code_store
@@ -209,7 +210,7 @@ async fn should_return_206_if_valid_credentials_and_2fa_enabled() {
         .get_code(&email)
         .await
         .expect("Failed to get 2FA code");
-    assert_eq!(stored_login_attempt_id.as_ref(), login_attempt_id);
+    assert_eq!(stored_login_attempt_id.as_ref().expose_secret(), login_attempt_id);
 
     app.clean_up().await;
 }

@@ -7,6 +7,7 @@ use axum::{
 };
 use domain::AuthAPIError;
 use redis::{Client, RedisResult};
+use secrecy::{ExposeSecret, SecretString};
 use serde::{Deserialize, Serialize};
 use sqlx::{postgres::PgPoolOptions, PgPool};
 use std::error::Error;
@@ -127,8 +128,8 @@ fn log_error_chain(e: &(dyn Error + 'static)) {
     tracing::error!("{}", report);
 }
 
-pub async fn get_postgres_pool(url: &str) -> Result<PgPool, sqlx::Error> {
-    PgPoolOptions::new().max_connections(5).connect(url).await
+pub async fn get_postgres_pool(url: &SecretString) -> Result<PgPool, sqlx::Error> {
+    PgPoolOptions::new().max_connections(5).connect(url.expose_secret()).await
 }
 
 pub fn get_redis_client(redis_hostname: String) -> RedisResult<Client> {

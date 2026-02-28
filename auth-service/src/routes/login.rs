@@ -1,10 +1,11 @@
 use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
 use axum_extra::extract::CookieJar;
+use secrecy::{ExposeSecret, SecretString};
 use serde::{Deserialize, Serialize};
 
 use crate::{
     app_state::AppState,
-    domain::{AuthAPIError, Email, HashedPassword, LoginAttemptId, TwoFACode},
+    domain::{AuthAPIError, Email, Password, LoginAttemptId, TwoFACode},
     utils::auth::generate_auth_cookie,
 };
 
@@ -14,11 +15,10 @@ pub async fn login(
     jar: CookieJar,
     Json(request): Json<LoginRequest>,
 ) -> (CookieJar, Result<impl IntoResponse, AuthAPIError>) {
-    match HashedPassword::parse(request.password.clone())
-        .await
+    let password = match Password::parse(request.password)
         .map_err(|_| AuthAPIError::InvalidCredentials)
     {
-        Ok(_) => (),
+        Ok(password) => password,
         Err(e) => return (jar, Err(e)),
     };
 
@@ -30,7 +30,7 @@ pub async fn login(
     let user_store = &state.user_store.read().await;
 
     if user_store
-        .validate_user(&email, &request.password)
+        .validate_user(&email, &password)
         .await
         .is_err()
     {
@@ -76,7 +76,7 @@ async fn handle_2fa(
 
     if let Err(e) = state
         .email_client
-        .send_email(email, "2FA Code", code.as_ref())
+        .send_email(email, "2FA Code", code.as_ref().expose_secret())
         .await
     {
         return (jar, Err(AuthAPIError::UnexpectedError(e)));
@@ -84,7 +84,7 @@ async fn handle_2fa(
 
     let response = Json(LoginResponse::TwoFactorAuth(TwoFactorAuthResponse {
         message: "2FA required".to_owned(),
-        login_attempt_id: login_attempt_id.as_ref().to_string(),
+        login_attempt_id: login_attempt_id.as_ref().expose_secret().to_string(),
     }));
 
     (jar, Ok((StatusCode::PARTIAL_CONTENT, response)))
@@ -113,8 +113,8 @@ async fn handle_no_2fa(
 
 #[derive(Deserialize)]
 pub struct LoginRequest {
-    pub email: String,
-    pub password: String,
+    email: SecretString,
+    password: SecretString,
 }
 
 #[derive(Debug, Serialize)]
